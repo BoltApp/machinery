@@ -17,6 +17,64 @@ type Arg struct {
 	Value interface{} `bson:"value"`
 }
 
+// Headers represents the headers which should be used to direct the task
+// Deprecated: Do not use DeprecatedSignature over Signature
+type Headers map[string]interface{}
+
+// Set on Headers implements opentracing.TextMapWriter for trace propagation
+func (h Headers) Set(key, val string) {
+	h[key] = val
+}
+
+// ForeachKey on Headers implements opentracing.TextMapReader for trace propagation.
+// It is essentially the same as the opentracing.TextMapReader implementation except
+// for the added casting from interface{} to string.
+func (h Headers) ForeachKey(handler func(key, val string) error) error {
+	for k, v := range h {
+		// Skip any non string values
+		stringValue, ok := v.(string)
+		if !ok {
+			continue
+		}
+
+		if err := handler(k, stringValue); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// DeprecatedSignature represents a single task invocation
+// Deprecated: This supports the previous iteration of Signature that uses Headers over http.Header
+type DeprecatedSignature struct {
+	UUID           string
+	Name           string
+	RoutingKey     string
+	ETA            *time.Time
+	GroupUUID      string
+	GroupTaskCount int
+	Args           []Arg
+	Headers        Headers
+	Priority       uint8
+	Immutable      bool
+	RetryCount     int
+	RetryTimeout   int
+	OnSuccess      []*Signature
+	OnError        []*Signature
+	ChordCallback  *Signature
+	//MessageGroupId for Broker, e.g. SQS
+	BrokerMessageGroupId string
+	//ReceiptHandle of SQS Message
+	SQSReceiptHandle string
+	// StopTaskDeletionOnError used with sqs when we want to send failed messages to dlq,
+	// and don't want machinery to delete from source queue
+	StopTaskDeletionOnError bool
+	// IgnoreWhenTaskNotRegistered auto removes the request when there is no handeler available
+	// When this is true a task with no handler will be ignored and not placed back in the queue
+	IgnoreWhenTaskNotRegistered bool
+}
+
 // Signature represents a single task invocation
 type Signature struct {
 	UUID           string
@@ -68,4 +126,47 @@ func CopySignature(signature *Signature) *Signature {
 	var sig = new(Signature)
 	_ = utils.DeepCopy(sig, signature)
 	return sig
+}
+
+func ConvertToSignature(deprecatedSignature *DeprecatedSignature) (*Signature, error) {
+	convertedHeader, err := convertHeaders(deprecatedSignature.Headers)
+	if err != nil {
+		return nil, err
+	}
+
+	signature := &Signature{
+		UUID:                        deprecatedSignature.UUID,
+		Name:                        deprecatedSignature.Name,
+		RoutingKey:                  deprecatedSignature.RoutingKey,
+		ETA:                         deprecatedSignature.ETA,
+		GroupUUID:                   deprecatedSignature.GroupUUID,
+		GroupTaskCount:              deprecatedSignature.GroupTaskCount,
+		Args:                        deprecatedSignature.Args,
+		Headers:                     convertedHeader,
+		Priority:                    deprecatedSignature.Priority,
+		Immutable:                   deprecatedSignature.Immutable,
+		RetryCount:                  deprecatedSignature.RetryCount,
+		RetryTimeout:                deprecatedSignature.RetryTimeout,
+		OnSuccess:                   deprecatedSignature.OnSuccess,
+		OnError:                     deprecatedSignature.OnError,
+		ChordCallback:               deprecatedSignature.ChordCallback,
+		BrokerMessageGroupId:        deprecatedSignature.BrokerMessageGroupId,
+		SQSReceiptHandle:            deprecatedSignature.SQSReceiptHandle,
+		StopTaskDeletionOnError:     deprecatedSignature.StopTaskDeletionOnError,
+		IgnoreWhenTaskNotRegistered: deprecatedSignature.IgnoreWhenTaskNotRegistered,
+	}
+	return signature, nil
+}
+
+func convertHeaders(headers Headers) (http.Header, error) {
+	httpHeader := http.Header{}
+	err := headers.ForeachKey(func(key, val string) error {
+		httpHeader.Set(key, val)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return httpHeader, nil
 }

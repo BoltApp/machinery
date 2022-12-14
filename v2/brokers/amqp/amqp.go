@@ -315,8 +315,18 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 	decoder := json.NewDecoder(bytes.NewReader(delivery.Body))
 	decoder.UseNumber()
 	if err := decoder.Decode(signature); err != nil {
-		delivery.Nack(multiple, requeue)
-		return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
+		// Try to use DeprecatedSignature before erroring out.
+		// If it succeeds, then this is a body from the previous version of Machinery
+		deprecatedSignature := new(tasks.DeprecatedSignature)
+		if err = decoder.Decode(deprecatedSignature); err != nil {
+			delivery.Nack(multiple, requeue)
+			return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
+		}
+
+		signature, err = tasks.ConvertToSignature(deprecatedSignature)
+		if err != nil {
+			return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
+		}
 	}
 
 	// If the task is not registered, we nack it and requeue,
