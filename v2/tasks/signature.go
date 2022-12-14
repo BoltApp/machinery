@@ -128,32 +128,32 @@ func CopySignature(signature *Signature) *Signature {
 	return sig
 }
 
-func ConvertToSignature(deprecatedSignature *DeprecatedSignature) (*Signature, error) {
-	convertedHeader, err := convertHeaders(deprecatedSignature.Headers)
+func (d *DeprecatedSignature) ConvertToSignature() (*Signature, error) {
+	convertedHeader, err := convertHeaders(d.Headers)
 	if err != nil {
 		return nil, err
 	}
 
 	signature := &Signature{
-		UUID:                        deprecatedSignature.UUID,
-		Name:                        deprecatedSignature.Name,
-		RoutingKey:                  deprecatedSignature.RoutingKey,
-		ETA:                         deprecatedSignature.ETA,
-		GroupUUID:                   deprecatedSignature.GroupUUID,
-		GroupTaskCount:              deprecatedSignature.GroupTaskCount,
-		Args:                        deprecatedSignature.Args,
+		UUID:                        d.UUID,
+		Name:                        d.Name,
+		RoutingKey:                  d.RoutingKey,
+		ETA:                         d.ETA,
+		GroupUUID:                   d.GroupUUID,
+		GroupTaskCount:              d.GroupTaskCount,
+		Args:                        d.Args,
 		Headers:                     convertedHeader,
-		Priority:                    deprecatedSignature.Priority,
-		Immutable:                   deprecatedSignature.Immutable,
-		RetryCount:                  deprecatedSignature.RetryCount,
-		RetryTimeout:                deprecatedSignature.RetryTimeout,
-		OnSuccess:                   deprecatedSignature.OnSuccess,
-		OnError:                     deprecatedSignature.OnError,
-		ChordCallback:               deprecatedSignature.ChordCallback,
-		BrokerMessageGroupId:        deprecatedSignature.BrokerMessageGroupId,
-		SQSReceiptHandle:            deprecatedSignature.SQSReceiptHandle,
-		StopTaskDeletionOnError:     deprecatedSignature.StopTaskDeletionOnError,
-		IgnoreWhenTaskNotRegistered: deprecatedSignature.IgnoreWhenTaskNotRegistered,
+		Priority:                    d.Priority,
+		Immutable:                   d.Immutable,
+		RetryCount:                  d.RetryCount,
+		RetryTimeout:                d.RetryTimeout,
+		OnSuccess:                   d.OnSuccess,
+		OnError:                     d.OnError,
+		ChordCallback:               d.ChordCallback,
+		BrokerMessageGroupId:        d.BrokerMessageGroupId,
+		SQSReceiptHandle:            d.SQSReceiptHandle,
+		StopTaskDeletionOnError:     d.StopTaskDeletionOnError,
+		IgnoreWhenTaskNotRegistered: d.IgnoreWhenTaskNotRegistered,
 	}
 	return signature, nil
 }

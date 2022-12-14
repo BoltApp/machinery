@@ -323,7 +323,7 @@ func (b *Broker) consumeOne(delivery amqp.Delivery, taskProcessor iface.TaskProc
 			return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
 		}
 
-		signature, err = tasks.ConvertToSignature(deprecatedSignature)
+		signature, err = deprecatedSignature.ConvertToSignature()
 		if err != nil {
 			return errs.NewErrCouldNotUnmarshalTaskSignature(delivery.Body, err)
 		}
